@@ -1,0 +1,602 @@
+
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Safari FICHAS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root{ --accent:#6b3e15; --accent-2:#4b2a0f; --paper:#fff8ee; }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family: 'Playfair Display', serif;background:#000;}
+    body{
+      padding:18px;
+      /* fundo padrão da página (substitua se quiser) */
+      background-image:url('Texto do seu parágrafo.png');
+      background-size:cover;
+      background-position:center;
+      color:#2b1b0f;
+    }
+    .container{ max-width:1200px; margin:0 auto; }
+    .header{ color:#fff; text-align:center; margin-bottom:12px; }
+    .header h1{ margin:0; font-size:34px; text-shadow:0 6px 20px rgba(0,0,0,0.6); }
+    .controls{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
+    .btn{ background:var(--accent-2); color:#fff; padding:8px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:600; }
+    .btn.ghost{ background:transparent; color:var(--accent-2); border:2px solid var(--accent-2); }
+    .map-wrap{ position:relative; margin-top:16px; border-radius:12px; box-shadow: 0 18px 50px rgba(0,0,0,0.6); overflow:hidden; min-height:360px; }
+    .map-img{ width:100%; display:block; filter:sepia(.06) contrast(1.03); transition:opacity 260ms ease; }
+    /* layer that will show the dynamic background when hovering hotspots */
+    .map-bg-layer{
+      position:absolute;
+      inset:0;
+      z-index:0;
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      transition:opacity 300ms ease, transform 300ms ease;
+      opacity:0;
+      transform: scale(1.02);
+      pointer-events:none;
+      filter:brightness(.9);
+    }
+    /* content above the bg layer */
+    .map-content{
+      position:relative;
+      z-index:1;
+      pointer-events:auto;
+    }
+    .hotspot{ position:absolute; cursor:pointer; border-radius:8px; pointer-events:auto; outline: none; }
+    .hotspot:focus { box-shadow: 0 0 0 3px rgba(255,255,255,0.12); }
+    .hotspot.selected { box-shadow: 0 8px 24px rgba(255,255,255,0.12); transform: translateY(-4px); transition: transform 180ms ease, box-shadow 180ms ease; }
+    .sheet-area{ margin-top:18px; }
+    .sheet{ display:none; padding:18px; border-radius:10px; background-image: url('Tet.png'); background-size:cover; color:#2b1b0f; box-shadow:0 20px 50px rgba(0,0,0,0.5); }
+    .sheet .foto{ width:160px; height:200px; border:4px solid var(--accent-2); background:var(--paper); display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:6px; }
+    .field{ margin-bottom:10px; }
+    .field label{ display:block; font-weight:700; margin-bottom:6px; }
+    .input{ width:100%; padding:8px; border-radius:6px; border:1px solid #cbb79a; box-sizing:border-box; }
+
+    /* Editor slide-in */
+    .editor-panel{ position:fixed; right:-420px; top:0; width:420px; height:100%; background:#fff9f2; box-shadow: -20px 0 60px rgba(0,0,0,0.6); transition:right .28s ease; z-index:9999; padding:18px; overflow:auto; }
+    .editor-panel.open{ right:0; }
+    .editor-panel h3{ margin-top:0; color:var(--accent-2); }
+    .field-item{ background:#fff; border:1px solid #e6d6c0; padding:10px; margin-bottom:8px; border-radius:6px; cursor:grab; display:flex; gap:8px; align-items:center; }
+    .small{ font-size:13px; color:#6b4a36; }
+    .kv{ flex:1; }
+    .preview-mini{ background:#fff8ee; padding:10px; border-radius:6px; border:1px solid #e6d6c0; margin-top:8px; }
+
+    /* injected premium styles (kept) */
+    .sheet { position:relative;
+      background: url('Brown Black Retro Vintage Cover Diary Book A4 .png') center/cover no-repeat;
+      padding:32px;
+      border-radius:14px;
+      border:4px solid #3a2415;
+      box-shadow:
+          0 0 30px rgba(0,0,0,0.45),
+          inset 0 0 35px rgba(0,0,0,0.35);
+      filter:contrast(1.08) brightness(0.96);
+      animation:fadeIn .35s ease-out; }
+    .sheet:after { content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      border-radius:14px;
+      box-shadow:inset 0 0 120px rgba(0,0,0,0.55); }
+    .sheet .foto { width:160px; height:200px; border:4px solid var(--accent-2); background:var(--paper); display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:6px; }
+    .sheet { background: url('Brown Black Retro Vintage Cover Diary Book A4 .png') center/cover no-repeat; background-blend-mode: multiply; border-radius: 12px; border: 2px solid rgba(80,50,20,0.22); box-shadow: 0 18px 42px rgba(0,0,0,0.48); }
+    .sheet::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 120px rgba(0,0,0,0.55); }
+
+    /* small utilities */
+    .card{ background: rgba(255,255,255,0.02); padding:12px; border-radius:10px; margin-bottom:12px; }
+    .attr-box{ display:inline-block; margin-right:8px; margin-top:8px; text-align:center; }
+    .small-muted{ color:#6b4a36; font-size:13px; }
+    @media(max-width:900px){ .editor-panel{ width:100%; } }
+
+    /* Loading styles */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 99999;
+      opacity: 1;
+      transition: opacity 1s ease;
+    }
+    #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+    .loader-img { width: 140px; height: 140px; animation: spin 5s linear infinite; opacity: 0.95; display:block; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- TELA DE LOADING -->
+  <div id="loading-screen" aria-hidden="false">
+    <img class="loader-img" src="1356.png" alt="Carregando" />
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <h1>Escolha a sua marca - FICHAS </h1>
+      <div class="small">Sistema de fichas online criado por Johnny!.</div>
+      <div class="controls">
+        <button class="btn" id="btnOpenEditor">🔧 Editar Layout</button>
+        <button class="btn ghost" id="btnExportModel">Exportar Modelo</button>
+        <button class="btn ghost" id="btnImportModel">Importar Modelo</button>
+      </div>
+    </div>
+
+    <div class="map-wrap" id="mapWrap">
+      <!-- camada de fundo dinâmica (vai receber as imagens ao passar o mouse) -->
+      <div class="map-bg-layer" id="mapBgLayer" aria-hidden="true"></div>
+
+      <div class="map-content">
+        <!-- imagem principal que será substituída ao clicar nos papéis -->
+        <img src="Design sem nome (8).png" class="map-img" id="mapImg" alt="cartazes">
+        <div id="hotspots" style="position:absolute; inset:8px; pointer-events:none;">
+          <!-- data-bg para hover/background layer; data-map para trocar a imagem principal ao clicar -->
+          <div class="hotspot" tabindex="0" data-id="1" data-bg="bg1.jpg" data-map="Tic.png" style="left:23%; top:4%; width:15%; height:38%;"></div>
+          <div class="hotspot" tabindex="0" data-id="2" data-bg="bg2.jpg" data-map="Tho.png" style="left:41%; top:4%; width:15%; height:40%;"></div>
+          <div class="hotspot" tabindex="0" data-id="3" data-bg="bg3.jpg" data-map="Isa.png" style="left:59%; top:4%; width:15%; height:38%;"></div>
+          <div class="hotspot" tabindex="0" data-id="4" data-bg="bg4.jpg" data-map="Mik.png" style="left:23%; top:58%; width:15%; height:38%;"></div>
+          <div class="hotspot" tabindex="0" data-id="6" data-bg="bg6.jpg" data-map="Ant.png" style="left:59%; top:56%; width:15%; height:38%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-area" id="sheetArea"></div>
+  </div>
+
+  <!-- Editor panel embedded -->
+  <div class="editor-panel" id="editorPanel" aria-hidden="true">
+    <h3>Editor de Layout (embutido)</h3>
+    <div class="small">Adicione, remova, renomeie e reordene campos. Salve o modelo para todas as fichas ou por papel.</div>
+
+    <div style="margin-top:12px;">
+      <label class="small">Nome do Modelo</label>
+      <input id="modelName" class="input" value="Modelo Padrão">
+    </div>
+
+    <div style="margin-top:12px;">
+      <strong>Atributos</strong>
+      <div id="attrsEditor" style="margin-top:8px;"></div>
+
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input id="newAttrLabel" class="input" placeholder="Ex: Sanidade">
+        <select id="newAttrType" class="input" style="width:110px;">
+          <option value="number">Número</option><option value="text">Texto</option>
+        </select>
+        <button class="btn ghost" id="btnAddAttr">Adicionar</button>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <strong>Fórmulas</strong>
+      <div id="formulasEditor" style="margin-top:8px;"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input id="formulaId" class="input" placeholder="ID (Ex: PV_MAX)">
+        <input id="formulaExpr" class="input" placeholder="Expressão (Ex: CON * 5)">
+        <button class="btn ghost" id="btnAddFormula">Salvar</button>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <strong>Rolagens</strong>
+      <div id="rollsEditor" style="margin-top:8px;"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input id="rollId" class="input" placeholder="Nome (Ex: ATAQUE)">
+        <input id="rollExpr" class="input" placeholder="Expr (Ex: 1d20 + FORCA)">
+        <button class="btn ghost" id="btnAddRoll">Salvar</button>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <strong>Inventário — Categorias</strong>
+      <div id="invCatsEditor" style="margin-top:8px;"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input id="newInvCat" class="input" placeholder="Ex: Armas">
+        <button class="btn ghost" id="btnAddInvCat">Adicionar</button>
+      </div>
+    </div>
+
+    <div style="margin-top:18px; display:flex; gap:8px;">
+      <button class="btn" id="btnSaveModel">Salvar Modelo</button>
+      <button class="btn ghost" id="btnCloseEditor">Fechar</button>
+    </div>
+
+    <div style="margin-top:18px;" class="preview-mini">
+      <strong>Prévia rápida</strong>
+      <div id="previewQuick"></div>
+    </div>
+
+  </div>
+
+  <!-- SCRIPTS: model, UI, sheets, e sistema de troca de fundo por hover/focus e clique que troca a imagem principal -->
+  <script>
+    // base model (stores in localStorage 'rpg_model')
+    let model = localStorage.getItem('rpg_model') ? JSON.parse(localStorage.getItem('rpg_model')) : {
+      name: 'Modelo Padrão',
+      attrs: [{id:'FORCA', type:'number', label:'Força', value:10},{id:'DEST', type:'number', label:'Destreza', value:10},{id:'CON', type:'number', label:'Constituição', value:10}],
+      formulas: [{id:'PV_MAX', expr:'CON * 5'}],
+      rolls: [{id:'ATAQUE', expr:'1d20 + FORCA'}],
+      invCats: ['Geral'],
+      presets: {}
+    };
+
+    const sheetsCount = 6;
+
+    // helper to save model and render editor lists
+    function saveModel(){ localStorage.setItem('rpg_model', JSON.stringify(model)); renderEditor(); renderPreviewQuick(); alert('Modelo salvo.'); }
+    function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+    // render editor lists
+    function renderEditor(){
+      document.getElementById('modelName').value = model.name || '';
+      const attrsEditor = document.getElementById('attrsEditor'); attrsEditor.innerHTML='';
+      model.attrs.forEach((a,idx)=>{
+        const div = document.createElement('div'); div.className='field-item'; div.draggable=true;
+        div.ondragstart = e=> { e.dataTransfer.setData('text/plain', idx); };
+        div.ondragover = e=> e.preventDefault();
+        div.ondrop = e=> {
+          const from = Number(e.dataTransfer.getData('text/plain')); const to = idx;
+          const tmp = model.attrs.splice(from,1)[0]; model.attrs.splice(to,0,tmp); renderEditor(); saveModel();
+        };
+        div.innerHTML = `<div class="kv"><input value="${a.label}" data-attr-idx="${idx}" class="input" oninput="renameAttr(${idx}, this.value)"></div>
+                         <div style="display:flex; gap:6px; margin-left:8px;"><select onchange="changeAttrType(${idx}, this.value)"><option ${a.type==='number'?'selected':''} value="number">Número</option><option ${a.type==='text'?'selected':''} value="text">Texto</option></select><button onclick="removeAttr(${idx})" class="btn ghost">Remover</button></div>`;
+        attrsEditor.appendChild(div);
+      });
+
+      // formulas
+      const formulasEditor = document.getElementById('formulasEditor'); formulasEditor.innerHTML='';
+      model.formulas.forEach((f, idx)=>{
+        const d = document.createElement('div'); d.className='field-item';
+        d.innerHTML = `<div class="kv"><input value="${f.id}" class="input" oninput="renameFormula(${idx}, this.value)"></div><div style="margin-left:8px;"><input value="${f.expr}" class="input" oninput="changeFormulaExpr(${idx}, this.value)"></div><div style="margin-left:8px;"><button onclick="removeFormula(${idx})" class="btn ghost">Remover</button></div>`;
+        formulasEditor.appendChild(d);
+      });
+
+      // rolls
+      const rollsEditor = document.getElementById('rollsEditor'); rollsEditor.innerHTML='';
+      model.rolls.forEach((r, idx)=>{
+        const d = document.createElement('div'); d.className='field-item';
+        d.innerHTML = `<div class="kv"><input value="${r.id}" class="input" oninput="renameRoll(${idx}, this.value)"></div><div style="margin-left:8px;"><input value="${r.expr}" class="input" oninput="changeRollExpr(${idx}, this.value)"></div><div style="margin-left:8px;"><button onclick="removeRoll(${idx})" class="btn ghost">Remover</button></div>`;
+        rollsEditor.appendChild(d);
+      });
+
+      // inv cats
+      const invCatsEditor = document.getElementById('invCatsEditor'); invCatsEditor.innerHTML='';
+      model.invCats.forEach((c, idx)=>{
+        const d = document.createElement('div'); d.className='field-item'; d.innerHTML = `<div class="kv"><input value="${c}" class="input" data-inv-idx="${idx}" oninput="renameInvCat(${idx}, this.value)"></div><div style="margin-left:8px;"><button onclick="removeInvCat(${idx})" class="btn ghost">Remover</button></div>`;
+        invCatsEditor.appendChild(d);
+      });
+    }
+
+    function renameAttr(i, v){ model.attrs[i].label = v; saveModel(); }
+    function changeAttrType(i, t){ model.attrs[i].type = t; saveModel(); }
+    function removeAttr(i){ if(confirm('Remover atributo?')){ model.attrs.splice(i,1); saveModel(); } }
+    function removeFormula(i){ model.formulas.splice(i,1); saveModel(); }
+    function removeRoll(i){ model.rolls.splice(i,1); saveModel(); }
+    function removeInvCat(i){ model.invCats.splice(i,1); saveModel(); }
+
+    document.getElementById('btnAddAttr').addEventListener('click', ()=>{
+      const lbl = document.getElementById('newAttrLabel').value.trim(); const type = document.getElementById('newAttrType').value;
+      if(!lbl) return alert('Nome vazio'); const id = lbl.toUpperCase().replace(/\s+/g,'_').replace(/[^A-Z0-9_]/g,'');
+      model.attrs.push({id:id, type:type, label:lbl, value: (type==='number'?10:'')}); document.getElementById('newAttrLabel').value=''; saveModel();
+    });
+
+    document.getElementById('btnAddFormula').addEventListener('click', ()=>{
+      const id = document.getElementById('formulaId').value.trim().toUpperCase(); const expr = document.getElementById('formulaExpr').value.trim();
+      if(!id || !expr) return alert('Nome ou expressão vazios'); model.formulas.push({id:id, expr:expr}); document.getElementById('formulaId').value=''; document.getElementById('formulaExpr').value=''; saveModel();
+    });
+
+    document.getElementById('btnAddRoll').addEventListener('click', ()=>{
+      const id = document.getElementById('rollId').value.trim().toUpperCase(); const expr = document.getElementById('rollExpr').value.trim();
+      if(!id || !expr) return alert('Nome ou expressão vazios'); model.rolls.push({id:id, expr:expr}); document.getElementById('rollId').value=''; document.getElementById('rollExpr').value=''; saveModel();
+    });
+
+    document.getElementById('btnAddInvCat').addEventListener('click', ()=>{
+      const name = document.getElementById('newInvCat').value.trim(); if(!name) return alert('Nome vazio'); model.invCats.push(name); document.getElementById('newInvCat').value=''; saveModel();
+    });
+
+    document.getElementById('btnSaveModel').addEventListener('click', ()=>{ model.name = document.getElementById('modelName').value.trim() || 'Modelo'; saveModel(); });
+
+    document.getElementById('btnExportModel').addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(model, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (model.name||'modelo') + '.json'; document.body.appendChild(a); a.click(); a.remove();
+    });
+
+    document.getElementById('btnImportModel').addEventListener('click', ()=>{
+      const f = document.createElement('input'); f.type='file'; f.accept='application/json'; f.onchange = e=>{
+        const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = ev=>{ try{ model = JSON.parse(ev.target.result); saveModel(); renderEditor(); alert('Modelo importado.'); }catch(err){ alert('JSON inválido'); } }; reader.readAsText(file);
+      }; f.click();
+    });
+
+    function renderPreviewQuick(){
+      const p = document.getElementById('previewQuick'); p.innerHTML='';
+      model.attrs.forEach(a=>{
+        const div = document.createElement('div'); div.innerHTML = `<strong>${a.label}</strong>: <em class="small-muted">${a.type}</em>`; p.appendChild(div);
+      });
+    }
+
+    // embedded editor open/close
+    const editor = document.getElementById('editorPanel');
+    document.getElementById('btnOpenEditor').addEventListener('click', ()=>{ editor.classList.add('open'); renderEditor(); });
+    document.getElementById('btnCloseEditor').addEventListener('click', ()=>{ editor.classList.remove('open'); });
+
+    // build sheets UI (using model)
+    function buildSheets(){
+      const area = document.getElementById('sheetArea'); area.innerHTML='';
+      for(let i=1;i<=sheetsCount;i++){
+        const div = document.createElement('div'); div.className='sheet card'; div.id='sheet_'+i;
+        let html = `<div style="display:flex; gap:16px;"><div style="flex:0 0 160px;"><div class="foto" id="photo_${i}"><span class="small-muted">Sem foto</span></div><div style="margin-top:8px;"><input type="file" id="file_${i}" accept="image/*" style="display:none"><button class="btn ghost" onclick="document.getElementById('file_${i}').click()">Adicionar foto</button> <button class="btn ghost" onclick="removePhoto(${i})">Remover</button></div></div><div style="flex:1">`;
+        html += `<div style="display:flex; justify-content:space-between; align-items:center;"><h2>Ficha — Marca ${i}</h2><div><button class="btn" onclick="downloadPDF(${i})">PDF</button> <button class="btn ghost" onclick="saveSheet(${i})">Salvar</button></div></div>`;
+        html += `<div class="field"><label>Nome</label><input type="text" id="fld_name_${i}" class="input"></div>`;
+        html += `<div style="display:flex; gap:8px;"><div class="field" style="flex:1"><label>Arquetipo</label><input type="text" id="fld_race_${i}" class="input"></div><div class="field" style="width:120px"><label>Nível</label><input type="number" id="fld_level_${i}" class="input" value="1"></div></div>`;
+        html += `<div style="margin-top:8px;"><label class="small-muted">Atributos</label><div class="attrs">`;
+        model.attrs.forEach(a=>{
+          if(a.type==='number'){
+            html += `<div class="attr-box"><div class="small-muted">${a.label}</div><input type="number" id="attr_${i}_${a.id}" value="${a.value||0}" style="width:64px; text-align:center; margin-top:6px; border-radius:6px; padding:6px; border:1px solid #cbb79a;"></div>`;
+          } else {
+            html += `<div class="attr-box"><div class="small-muted">${a.label}</div><input type="text" id="attr_${i}_${a.id}" value="${a.value||''}" style="width:100px; text-align:center; margin-top:6px; border-radius:6px; padding:6px; border:1px solid #cbb79a;"></div>`;
+          }
+        });
+        html += `</div></div>`;
+        // formulas
+        html += `<div class="field"><label>Fórmulas</label>`;
+        model.formulas.forEach(f=>{ html += `<div class="field"><label>${f.id}</label><input type="text" id="formula_${i}_${f.id}" class="input" readonly></div>`; });
+        html += `</div>`;
+        // rolls and inventory preview
+        html += `<div class="field"><label>Rolagens</label>`;
+        model.rolls.forEach(r=>{ html += `<div style="display:flex; gap:8px; align-items:center; margin-top:6px;"><div style="flex:1">${r.id} — <span class="small-muted">${r.expr}</span></div><div><button class="btn ghost" onclick="doRoll('${r.expr.replace(/'/g,"\\'")}', ${i})">Rolar</button></div></div>`; });
+        html += `</div>`;
+        html += `<div class="field"><label>Inventário</label>`;
+        model.invCats.forEach((cat,idx)=>{ html += `<div class="card"><strong>${cat}</strong><div style="margin-top:8px;"><textarea id="inv_${i}_${idx}" placeholder="Itens separados por vírgula" style="width:100%; min-height:60px;"></textarea></div></div>`; });
+        html += `</div>`;
+        html += `<div class="field"><label>Notas</label><textarea id="notes_${i}" class="input"></textarea></div>`;
+        html += `</div></div>`;
+        div.innerHTML = html;
+        area.appendChild(div);
+
+        // file input listener
+        setTimeout(()=>{
+          const fileInput = document.getElementById('file_'+i);
+          fileInput.addEventListener('change', ev=>{
+            const file = ev.target.files[0]; if(!file) return;
+            const reader = new FileReader(); reader.onload = e=>{ const box = document.getElementById('photo_'+i); box.innerHTML = '<img src="'+e.target.result+'">'; localStorage.setItem('sheet_photo_'+i, e.target.result); }; reader.readAsDataURL(file);
+          });
+        },50);
+      }
+      // hide all sheets initially
+      document.querySelectorAll('.sheet').forEach(s=>s.style.display='none');
+      // hotpots clickable to open sheet
+      document.querySelectorAll('.hotspot').forEach(h=>{ h.style.pointerEvents='auto'; h.addEventListener('click', ()=>{ openSheet(h.getAttribute('data-id')); }); });
+      // load saved photos
+      for(let i=1;i<=sheetsCount;i++){
+        const p = localStorage.getItem('sheet_photo_'+i); if(p){ const box = document.getElementById('photo_'+i); if(box) box.innerHTML = '<img src="'+p+'">'; }
+      }
+      // evaluate formulas periodically
+      setTimeout(()=>{ for(let i=1;i<=sheetsCount;i++) evaluateAllFormulas(i); },200);
+    }
+
+    function openSheet(id){
+      document.querySelectorAll('.sheet').forEach(s=>s.style.display='none');
+      const el = document.getElementById('sheet_'+id); if(el) el.style.display='block'; window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function evaluateExpression(expr, id){
+      try{
+        let e = expr;
+        model.attrs.forEach(a=>{
+          const re = new RegExp('\\b'+a.id+'\\b','g');
+          const el = document.getElementById('attr_'+id+'_'+a.id);
+          let val = 0;
+          if(el){ val = Number(el.value) || 0; }
+          e = e.replace(re, '('+val+')');
+        });
+        if(/[^0-9+\-*/(). %A-Za-z,_]/.test(e)) { return 'ERR'; }
+        const fn = new Function('Math', 'return ('+e+');');
+        const res = fn(Math);
+        if(isFinite(res)) return Math.round(res*100)/100;
+        return 'ERR';
+      }catch(err){ return 'ERR'; }
+    }
+    function evaluateAllFormulas(id){ model.formulas.forEach(f=>{ const v = evaluateExpression(f.expr, id); const el = document.getElementById('formula_'+id+'_'+f.id); if(el) el.value = v; }); }
+
+    function rollDice(spec){
+      const m = spec.match(/(\d*)d(\d+)/i); if(!m) return null;
+      const cnt = Number(m[1]) || 1; const sides = Number(m[2]); let total = 0; let rolls=[];
+      for(let i=0;i<cnt;i++){ const r = Math.floor(Math.random()*sides)+1; rolls.push(r); total += r; }
+      return {total, rolls};
+    }
+    function doRoll(expr, id){
+      let e = expr.toUpperCase();
+      model.attrs.forEach(a=>{ const el = document.getElementById('attr_'+id+'_'+a.id); const val = el ? (Number(el.value)||0) : 0; e = e.replace(new RegExp('\\b'+a.id+'\\b','g'), val); });
+      const diceRegex = /(\d*d\d+)/ig; let details=[];
+      e = e.replace(diceRegex, function(token){ const r = rollDice(token); if(!r) return token; details.push({token, rolls:r.rolls, total:r.total}); return '('+r.total+')'; });
+      try{ if(/[^0-9+\-*/(). ,]/.test(e)) { alert('Expressão inválida: ' + e); return; } const res = Function('return ('+e+')')(); let msg = 'Resultado: '+res+'\nDetalhes:\n'; details.forEach(d=> msg += d.token + ': ['+d.rolls.join(',')+'] => '+d.total+'\n'); alert(msg); }catch(err){ alert('Erro ao calcular rolagem'); }
+    }
+
+    function saveSheet(id){
+      const data = {};
+      data.name = document.getElementById('fld_name_'+id).value;
+      data.race = document.getElementById('fld_race_'+id).value;
+      data.level = document.getElementById('fld_level_'+id).value;
+      model.attrs.forEach(a=>{ const el = document.getElementById('attr_'+id+'_'+a.id); if(el) data[a.id]= el.value; });
+      model.formulas.forEach(f=>{ const el = document.getElementById('formula_'+id+'_'+f.id); if(el) data['F_'+f.id]= el.value; });
+      model.invCats.forEach((c,idx)=>{ const el = document.getElementById('inv_'+id+'_'+idx); if(el) data['INV_'+idx]= el.value; });
+      data.notes = document.getElementById('notes_'+id).value;
+      localStorage.setItem('sheet_data_'+id, JSON.stringify(data)); alert('Ficha '+id+' salva.');
+    }
+
+    function loadSheet(id){
+      const raw = localStorage.getItem('sheet_data_'+id); if(!raw) return alert('Nenhum dado salvo localmente.'); const data = JSON.parse(raw);
+      document.getElementById('fld_name_'+id).value = data.name||''; document.getElementById('fld_race_'+id).value = data.race||''; document.getElementById('fld_level_'+id).value = data.level||1;
+      model.attrs.forEach(a=>{ const el=document.getElementById('attr_'+id+'_'+a.id); if(el) el.value = data[a.id]||0; });
+      model.formulas.forEach(f=>{ const el=document.getElementById('formula_'+id+'_'+f.id); if(el) el.value = data['F_'+f.id]||''; });
+      model.invCats.forEach((c,idx)=>{ const el=document.getElementById('inv_'+id+'_'+idx); if(el) el.value = data['INV_'+idx]||''; });
+      document.getElementById('notes_'+id).value = data.notes||'';
+      const p = localStorage.getItem('sheet_photo_'+id); if(p){ document.getElementById('photo_'+id).innerHTML = '<img src="'+p+'">'; }
+      evaluateAllFormulas(id); alert('Dados carregados para ficha '+id);
+    }
+
+    function downloadPDF(id){
+      const node = document.getElementById('sheet_'+id); if(!node){ alert('Abra a ficha antes de exportar.'); return; }
+      const clone = node.cloneNode(true); clone.querySelectorAll('button,input[type=file]').forEach(x=>x.remove()); document.body.appendChild(clone);
+      html2pdf().from(clone).set({margin:10, filename:'ficha-'+id+'.pdf', html2canvas:{scale:2}}).save().then(()=>clone.remove());
+    }
+
+    function removePhoto(id){ localStorage.removeItem('sheet_photo_'+id); const el = document.getElementById('photo_'+id); if(el) el.innerHTML = '<span class="small-muted">Sem foto</span>'; const inp = document.getElementById('file_'+id); if(inp) inp.value=''; }
+
+    // init
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // build UI and sheets
+      buildSheets();
+      renderEditor();
+      renderPreviewQuick();
+      // restore selected map image if saved
+      restoreSelectedMap();
+    });
+
+    // Loading screen control
+    window.addEventListener("load", () => {
+      const loading = document.getElementById("loading-screen");
+      const content = document.querySelector(".container");
+      if (!loading || !content) return;
+      setTimeout(() => {
+        loading.classList.add("fade-out");
+        setTimeout(() => {
+          loading.setAttribute("aria-hidden","true");
+          content.style.opacity = "1";
+        }, 1000);
+      }, 800);
+    });
+
+    /* =========================
+       Sistema: trocar fundo ao passar o mouse / focar hotspots (mapBgLayer)
+       e trocar a imagem principal (#mapImg) ao clicar em cada hotspot
+       - data-map em cada hotspot indica o arquivo que substituirá a imagem principal
+       - persistência via localStorage (chave: selected_map)
+       ========================= */
+    (function setupHotspotBackgrounds(){
+      const hotspots = document.querySelectorAll('.hotspot');
+      const bgLayer = document.getElementById('mapBgLayer');
+      const mapImg = document.getElementById('mapImg');
+      const STORAGE_KEY = 'selected_map'; // salva {id, mapSrc}
+      const defaultMapSrc = mapImg ? mapImg.getAttribute('src') : '';
+
+      const preload = src => { if(!src) return; const i = new Image(); i.src = src; };
+
+      // preload all data-map and data-bg images
+      hotspots.forEach(h => {
+        const bg = h.dataset.bg;
+        const map = h.dataset.map;
+        if(bg) preload(bg);
+        if(map) preload(map);
+      });
+
+      // restore saved selection
+      function restoreSelectedMap(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if(!raw) return;
+          const obj = JSON.parse(raw);
+          if(obj && obj.mapSrc){
+            if(mapImg) mapImg.src = obj.mapSrc;
+            // mark hotspot selected
+            if(obj.id){
+              document.querySelectorAll('.hotspot').forEach(x => x.classList.remove('selected'));
+              const el = document.querySelector(`.hotspot[data-id="${obj.id}"]`);
+              if(el) el.classList.add('selected');
+            }
+          }
+        }catch(e){}
+      }
+
+      // expose restore for initial load
+      window.restoreSelectedMap = restoreSelectedMap;
+
+      hotspots.forEach(h => {
+        const bg = h.dataset.bg;
+        const map = h.dataset.map;
+
+        // mouse enter -> show bg layer (temporary)
+        h.addEventListener('mouseenter', () => {
+          if(!bg) return;
+          bgLayer.style.backgroundImage = `url('${bg}')`;
+          bgLayer.style.opacity = '1';
+          bgLayer.style.transform = 'scale(1)';
+        });
+
+        // mouse leave -> hide bg layer
+        h.addEventListener('mouseleave', () => {
+          bgLayer.style.opacity = '0';
+          setTimeout(()=>{ if(bgLayer.style.opacity === '0') bgLayer.style.backgroundImage = ''; }, 350);
+        });
+
+        // keyboard focus -> show bg layer
+        h.addEventListener('focus', () => {
+          if(!bg) return;
+          bgLayer.style.backgroundImage = `url('${bg}')`;
+          bgLayer.style.opacity = '1';
+          bgLayer.style.transform = 'scale(1)';
+        });
+        h.addEventListener('blur', () => {
+          bgLayer.style.opacity = '0';
+          setTimeout(()=>{ if(bgLayer.style.opacity === '0') bgLayer.style.backgroundImage = ''; }, 350);
+        });
+
+        // click -> open sheet AND change the main map image (persistently)
+        h.addEventListener('click', (e) => {
+          const id = h.getAttribute('data-id');
+          if (id) openSheet(id);
+
+          if(map && mapImg){
+            // change the main image
+            mapImg.style.opacity = '0';
+            // small fade transition
+            setTimeout(()=>{
+              mapImg.src = map;
+              mapImg.style.opacity = '1';
+            }, 180);
+
+            // mark selected visually
+            document.querySelectorAll('.hotspot').forEach(x => x.classList.remove('selected'));
+            h.classList.add('selected');
+
+            // persist selection
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ id: id, mapSrc: map }));
+          } else {
+            // if no data-map, clear selection and restore default if desired
+            document.querySelectorAll('.hotspot').forEach(x => x.classList.remove('selected'));
+            // optional: restore default map
+            // mapImg.src = defaultMapSrc;
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        });
+
+        // allow Enter/Space to trigger click (accessibility)
+        h.addEventListener('keydown', (ev) => {
+          if(ev.key === 'Enter' || ev.key === ' '){
+            ev.preventDefault();
+            h.click();
+          }
+        });
+      });
+
+      // Esc clears selection and restores default map
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.hotspot').forEach(x => x.classList.remove('selected'));
+          if(mapImg) {
+            mapImg.style.opacity = '0';
+            setTimeout(()=>{ mapImg.src = defaultMapSrc; mapImg.style.opacity = '1'; }, 180);
+          }
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      });
+    })();
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+</body>
+</html>
